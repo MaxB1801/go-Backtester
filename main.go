@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -17,26 +19,13 @@ import (
 // sort lev, accs,dis and mids all into seperate folders for backtests, will be a tview configurable
 // add starting pot function for testing that way, might need to be a seperacode
 
-const (
-// rsi_low  int = 24
-// rsi_high int = 40
-
-// rsi_exit_low  = 60
-// rsi_exit_high = 76
-
-// rsi_increment int = 2
-
-// folder string = "\\acc"
-
-// stop_loss bool = true
-)
-
-// find entry function
-
-// find exit function
+// Create a channel for messages
+var channel chan string = make(chan string)
+var errorChannel chan string = make(chan string)
 
 func main() {
 
+	var download = false
 	var err error
 	var stop_loss bool
 	var rsi_low int
@@ -47,28 +36,76 @@ func main() {
 	var rsi_increment int
 	var buttonText string
 
-	// Create a channel for messages
-	channel := make(chan string)
+	// creating loading screen while downloading apps, can press button to skip!!!
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	errorChannel := make(chan string)
+	app1 := tview.NewApplication()
+
+	modal := tview.NewModal().
+		SetText("Would you like to download the test data to ensure it is current? The data will be retrieved from Yahoo Finance.").
+		AddButtons([]string{"Download", "Skip"})
+	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		if buttonLabel == "Download" {
+			download = true
+
+			app1.Stop()
+
+		}
+		if buttonLabel == "Skip" {
+			download = false
+			app1.Stop()
+		}
+	})
+	if err := app1.SetRoot(modal, false).EnableMouse(true).SetFocus(modal).Run(); err != nil {
+		panic(err)
+	}
+
+	if download {
+		wait := tview.NewApplication()
+		go Downloader(wait, dir)
+
+		waiter := tview.NewModal().
+			SetText("Downloading: Skipping now may cause issues").
+			AddButtons([]string{"Skip"})
+		waiter.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "Skip" {
+				download = false
+				wait.Stop()
+			}
+		})
+		if err := wait.SetRoot(waiter, false).EnableMouse(true).SetFocus(modal).Run(); err != nil {
+			panic(err)
+		}
+	}
 
 	app := tview.NewApplication()
 
 	// create flex to center
 	message := tview.NewList()
-	message.SetBorder(true).SetTitle("Results").SetBorderColor(tcell.ColorDarkCyan.TrueColor())
 	// error channels texts
 	errors := tview.NewList()
-	errors.SetBorder(true).SetTitle("Error Messages").SetBorderColor(tcell.ColorRed.TrueColor())
-	// making flext
-	flextText := tview.NewFlex().SetDirection(tview.FlexColumn).
+	flexMess := tview.NewFlex().
+		AddItem(tview.NewBox(), 0, 1, false).
 		AddItem(message, 0, 2, false).
-		AddItem(errors, 0, 2, false)
+		AddItem(tview.NewBox(), 0, 1, false)
+	flexMess.SetBorder(true).SetTitle("Results").SetBorderColor(tcell.ColorDarkCyan.TrueColor())
+	flexErrors := tview.NewFlex().
+		AddItem(tview.NewBox(), 0, 1, false).
+		AddItem(errors, 0, 1, false).
+		AddItem(tview.NewBox(), 0, 1, false)
+	flexErrors.SetBorder(true).SetTitle("Error Messages").SetBorderColor(tcell.ColorRed.TrueColor())
+	// making flex
+	flextText := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(flexMess, 0, 2, false).
+		AddItem(flexErrors, 0, 2, false)
 
 	// define button here
 	buttonSort := tview.NewButton("Start Backtests")
 	// consume messages
-	go recieve(message, errors, channel, errorChannel)
+	go recieve(message, errors)
 
 	// groups
 	options := []string{"Core Acc", "Core Dis", "Mid"}
@@ -160,35 +197,42 @@ func main() {
 
 	buttonSort.SetSelectedFunc(func() {
 		message.Clear()
-		dir, err := os.Getwd()
-		if err != nil {
-			log.Fatal(err)
-		}
 
 		list, err := os.ReadDir(fmt.Sprintf(dir + folder + "\\data"))
 		if err != nil {
 			log.Fatal(err, list)
 		}
 
-		if rsi_low < 0 || rsi_high < 0 || rsi_exit_high < 0 || rsi_exit_low < 0 {
+		if (rsi_low < 0) || (rsi_high < 0) || (rsi_exit_high < 0) || (rsi_exit_low < 0) {
 			errorChannel <- "Err: Not a Number"
 		}
 
-		startBacktests(fmt.Sprintf(dir+folder), list, stop_loss, rsi_low, rsi_high, rsi_exit_low, rsi_exit_high, rsi_increment, channel, errorChannel)
+		startBacktests(fmt.Sprintf(dir+folder), list, stop_loss, rsi_low, rsi_high, rsi_exit_low, rsi_exit_high, rsi_increment)
 
 	})
 	buttonSort.SetStyle(tcell.StyleDefault.Background(tcell.ColorTurquoise))      //.Foreground(tcell.ColorWhite))
 	buttonSort.SetActivatedStyle(tcell.StyleDefault.Background(tcell.ColorGreen)) //.Foreground(tcell.ColorBlack))
 	buttonSort.SetLabelColor(tcell.ColorBlack)
 	buttonSort.SetLabelColorActivated(tcell.ColorBlack)
+	buttonExit := tview.NewButton("Exit")
+	buttonExit.SetSelectedFunc(func() {
+		app.Stop()
+	})
+	buttonExit.SetStyle(tcell.StyleDefault.Background(tcell.ColorDarkRed.TrueColor()))      //.Foreground(tcell.ColorWhite))
+	buttonExit.SetActivatedStyle(tcell.StyleDefault.Background(tcell.ColorRed.TrueColor())) //.Foreground(tcell.ColorBlack))
+	buttonExit.SetLabelColor(tcell.ColorBlack.TrueColor())
+	buttonExit.SetLabelColorActivated(tcell.ColorBlack.TrueColor())
+
 	flexButtonTop := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(tview.NewBox(), 0, 2, false).
 		AddItem(tview.NewBox(), 0, 2, false).
 		AddItem(tview.NewBox(), 0, 2, false)
 	flexButtonMiddle := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(tview.NewBox(), 0, 1, false).
+		AddItem(buttonSort, 0, 1, false).
 		AddItem(tview.NewBox(), 0, 2, false).
-		AddItem(buttonSort, 0, 2, false).
-		AddItem(tview.NewBox(), 0, 2, false)
+		AddItem(buttonExit, 0, 1, false).
+		AddItem(tview.NewBox(), 0, 1, false)
 	flexButtonBottom := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(tview.NewBox(), 0, 2, false).
 		AddItem(tview.NewBox(), 0, 2, false).
@@ -200,10 +244,10 @@ func main() {
 	flextButton.SetBorder(true)
 
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(flexChecks, 0, 2, false).
-		AddItem(flexForms, 0, 2, false).
-		AddItem(flextButton, 0, 2, false).
-		AddItem(flextText, 0, 2, false)
+		AddItem(flexChecks, 0, 1, false).
+		AddItem(flexForms, 0, 1, false).
+		AddItem(flextButton, 0, 1, false).
+		AddItem(flextText, 0, 3, false)
 
 	if err := app.SetRoot(flex, true).EnableMouse(true).Run(); err != nil {
 		panic(err)
@@ -211,7 +255,7 @@ func main() {
 
 }
 
-func recieve(message, erros *tview.List, channel, errorChannel chan string) {
+func recieve(message, erros *tview.List) {
 	for {
 		select {
 		case msg, ok := <-channel:
@@ -236,3 +280,19 @@ func recieve(message, erros *tview.List, channel, errorChannel chan string) {
 }
 
 // split the results into message and error message
+
+func Downloader(wait *tview.Application, dir string) {
+	pyRun := filepath.Join(dir, "python.exe")
+
+	// Run the Python script
+	cmd := exec.Command(pyRun)
+
+	// Run the command and ignore the output
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("Failed to run python.exe: %v", err)
+	}
+
+	wait.Stop()
+
+}

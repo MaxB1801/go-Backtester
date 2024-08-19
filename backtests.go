@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,8 +34,6 @@ type results struct {
 	roi      float64
 }
 
-// use channels for updating/showing best configs
-
 // retur data as struct
 func getData(dir string, stock fs.DirEntry) []dayData {
 
@@ -46,7 +43,8 @@ func getData(dir string, stock fs.DirEntry) []dayData {
 
 	fileOpen, err := os.Open(file)
 	if err != nil {
-		fmt.Println("ERROR OPENING FILE: ", err)
+
+		errorChannel <- fmt.Sprintf("ERROR OPENING FILE: %s", err)
 	}
 
 	defer fileOpen.Close()
@@ -57,8 +55,7 @@ func getData(dir string, stock fs.DirEntry) []dayData {
 	// Read all rows from the CSV
 	rawData, err := reader.ReadAll()
 	if err != nil {
-		fmt.Printf("Failed to read CSV file: %v\n", err)
-		log.Fatal("ERROR READING CSV: ", err)
+		errorChannel <- fmt.Sprintf("ERROR READING CSV: %s", err)
 	}
 
 	var data []dayData
@@ -91,7 +88,7 @@ func outputFiles(dir string, stock fs.DirEntry, results []trades) {
 	fileName := filepath.Join(dir, stock.Name())
 	file, err := os.Create(fileName)
 	if err != nil {
-		fmt.Println("ERROR Writing to CSV: ", err)
+		errorChannel <- fmt.Sprintf("ERROR Writing to CSV: %s", err)
 	}
 	defer file.Close()
 
@@ -101,7 +98,7 @@ func outputFiles(dir string, stock fs.DirEntry, results []trades) {
 	// Write the header
 	header := []string{"Entry Date", "Entry Price", "Exit Date", "Exit Price", "Trade Length in Days", "ROI %"}
 	if err := writer.Write(header); err != nil {
-		fmt.Println("error writing header to CSV: %v", err)
+		errorChannel <- fmt.Sprintf("error writing header to CSV: %s", err)
 	}
 
 	// Write the data rows
@@ -126,7 +123,7 @@ func resultsFile(dir string, trades []results) {
 
 	file, err := os.Create(dir)
 	if err != nil {
-		fmt.Println("Error creating results file: ", err)
+		errorChannel <- fmt.Sprintf("Error creating results file: %s", err)
 	}
 	defer file.Close()
 
@@ -136,7 +133,7 @@ func resultsFile(dir string, trades []results) {
 	// Write the header
 	header := []string{"Stock", "RSI Entry", "RSI Exit", "ROI %"}
 	if err := writer.Write(header); err != nil {
-		fmt.Println("error writing header to CSV: %v", err)
+		errorChannel <- fmt.Sprintf("error writing header to CSV: %s", err)
 	}
 
 	// Write the data rows
@@ -148,7 +145,7 @@ func resultsFile(dir string, trades []results) {
 			strconv.FormatFloat(result.roi, 'f', 2, 64),
 		}
 		if err := writer.Write(record); err != nil {
-			fmt.Println("error writing record to CSV: %v", err)
+			errorChannel <- fmt.Sprintf("error writing record to CSV: %s", err)
 		}
 	}
 
@@ -255,7 +252,7 @@ func findExit(n int, data []dayData, rsi int, trade trades, low float64) (int, t
 
 }
 
-func startBacktests(dir string, list []fs.DirEntry, stop_loss bool, rsi_low, rsi_high, rsi_exit_low, rsi_exit_high, rsi_increment int, channel, errorChannel chan string) {
+func startBacktests(dir string, list []fs.DirEntry, stop_loss bool, rsi_low, rsi_high, rsi_exit_low, rsi_exit_high, rsi_increment int) {
 
 	var result results
 	var resultSLice []results
@@ -292,13 +289,13 @@ func startBacktests(dir string, list []fs.DirEntry, stop_loss bool, rsi_low, rsi
 		outputFiles(fmt.Sprintf(dir+"\\trades"), stock, test)
 
 		result = results{
-			stock:    stock.Name(),
+			stock:    stockName,
 			rsi:      rsi,
 			rsi_exit: rsi_exit,
 			roi:      totalROI,
 		}
 
-		channel <- fmt.Sprintf("[%s] [RSI: %d] [RSI EXIT: %d] [ROI %.2f%%]", stockName, rsi, rsi_exit, totalROI)
+		channel <- fmt.Sprintf("%s: [RSI: %d] [RSI EXIT: %d] [ROI %.2f%%]", stockName, rsi, rsi_exit, totalROI)
 
 		resultSLice = append(resultSLice, result)
 
@@ -340,7 +337,6 @@ func backtest(data []dayData, stop_loss bool, rsi_low, rsi_high, rsi_exit_low, r
 					break
 				}
 
-				//fmt.Println(trade, "here")
 				test = append(test, trade)
 				n = pointer
 

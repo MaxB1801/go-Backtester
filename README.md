@@ -22,3 +22,9 @@ tbh python good enough for now. Will do this so i can add better tview stuff and
 GRAPHSSS
 
 # notes use yahoo finance api to load files into their folder with the updated data
+
+# make ticker list for all my entrys, with different colours for different things. Use drop down table for selection
+
+# make python read data from csv file for all the accs, dis , mids for downloading.
+
+# implement the trading view position sizing calculator logic

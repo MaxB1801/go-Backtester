@@ -25,6 +25,12 @@ GRAPHSSS
 
 # make ticker list for all my entrys, with different colours for different things. Use drop down table for selection
 
-# make python read data from csv file for all the accs, dis , mids for downloading.
+# implement upcoming trades logic aswell for my ticker list by downloading stocks in the last year, and doing the maths on it. MAke use a tmp folder (use a year for short download)
 
 # implement the trading view position sizing calculator logic
+
+# builds
+
+pyinstaller --onefile python.py
+
+go build -o finance.exe

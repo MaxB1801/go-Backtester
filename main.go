@@ -25,6 +25,8 @@ var errorChannel chan string = make(chan string)
 
 func main() {
 
+	var exit = true
+	var downloadX = false
 	var download = false
 	var err error
 	var stop_loss bool
@@ -46,21 +48,63 @@ func main() {
 
 	modal := tview.NewModal().
 		SetText("Would you like to download the test data to ensure it is current? The data will be retrieved from Yahoo Finance.").
-		AddButtons([]string{"Download", "Skip"})
+		AddButtons([]string{"Download", "Download X Years", "Skip"})
 	modal.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 		if buttonLabel == "Download" {
 			download = true
+			downloadX = false
+
+			app1.Stop()
+
+		}
+		if buttonLabel == "Download X Years" {
+			download = true
+			downloadX = true
 
 			app1.Stop()
 
 		}
 		if buttonLabel == "Skip" {
+			download = true
 			download = false
+			downloadX = false
 			app1.Stop()
 		}
 	})
 	if err := app1.SetRoot(modal, false).EnableMouse(true).SetFocus(modal).Run(); err != nil {
 		panic(err)
+	}
+
+	if downloadX {
+		app := tview.NewApplication()
+
+		inputField := tview.NewInputField()
+		inputField.SetLabel("Retrieve Data for the Past X Years: ").
+			SetFieldWidth(10).
+			SetAcceptanceFunc(tview.InputFieldInteger).
+			SetDoneFunc(func(key tcell.Key) {
+				if key == tcell.KeyEnter {
+					// Get the input value
+					input := inputField.GetText()
+					// Convert input to an integer
+					years, err := strconv.Atoi(input)
+					if err != nil {
+						inputField.SetLabel("Retrieve Data for the Past X Years (Enter an Integer): ")
+					} else {
+						// Set the environment variable
+						err = os.Setenv("PERIOD", strconv.Itoa(years))
+						if err != nil {
+							log.Fatalf("Failed to set env var: %v", err)
+						}
+
+						app.Stop()
+					}
+				}
+			})
+
+		if err := app.SetRoot(inputField, true).SetFocus(inputField).Run(); err != nil {
+			panic(err)
+		}
 	}
 
 	if download {
@@ -216,12 +260,32 @@ func main() {
 	buttonSort.SetLabelColorActivated(tcell.ColorBlack)
 	buttonExit := tview.NewButton("Exit")
 	buttonExit.SetSelectedFunc(func() {
+		exit = true
 		app.Stop()
 	})
-	buttonExit.SetStyle(tcell.StyleDefault.Background(tcell.ColorDarkRed.TrueColor()))      //.Foreground(tcell.ColorWhite))
-	buttonExit.SetActivatedStyle(tcell.StyleDefault.Background(tcell.ColorRed.TrueColor())) //.Foreground(tcell.ColorBlack))
+	buttonExit.SetStyle(tcell.StyleDefault.Background(tcell.ColorRed.TrueColor()))              //.Foreground(tcell.ColorWhite))
+	buttonExit.SetActivatedStyle(tcell.StyleDefault.Background(tcell.ColorDarkRed.TrueColor())) //.Foreground(tcell.ColorBlack))
 	buttonExit.SetLabelColor(tcell.ColorBlack.TrueColor())
 	buttonExit.SetLabelColorActivated(tcell.ColorBlack.TrueColor())
+
+	buttonList := tview.NewButton("View Upcoming Entrys")
+	buttonList.SetSelectedFunc(func() {
+		exit = false
+		// Set the environment variable
+		err = os.Setenv("PERIOD", "1")
+		if err != nil {
+			log.Fatalf("Failed to set env var: %v", err)
+		}
+		err = os.Setenv("PYTEMP", "1")
+		if err != nil {
+			log.Fatalf("Failed to set env var: %v", err)
+		}
+		app.Stop()
+	})
+	buttonList.SetStyle(tcell.StyleDefault.Background(tcell.ColorYellow.TrueColor()))                        //.Foreground(tcell.ColorWhite))
+	buttonList.SetActivatedStyle(tcell.StyleDefault.Background(tcell.ColorLightGoldenrodYellow.TrueColor())) //.Foreground(tcell.ColorBlack))
+	buttonList.SetLabelColor(tcell.ColorBlack.TrueColor())
+	buttonList.SetLabelColorActivated(tcell.ColorBlack.TrueColor())
 
 	flexButtonTop := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(tview.NewBox(), 0, 2, false).
@@ -230,7 +294,9 @@ func main() {
 	flexButtonMiddle := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(tview.NewBox(), 0, 1, false).
 		AddItem(buttonSort, 0, 1, false).
-		AddItem(tview.NewBox(), 0, 2, false).
+		AddItem(tview.NewBox(), 0, 1, false).
+		AddItem(buttonList, 0, 1, false).
+		AddItem(tview.NewBox(), 0, 1, false).
 		AddItem(buttonExit, 0, 1, false).
 		AddItem(tview.NewBox(), 0, 1, false)
 	flexButtonBottom := tview.NewFlex().SetDirection(tview.FlexColumn).
@@ -251,6 +317,29 @@ func main() {
 
 	if err := app.SetRoot(flex, true).EnableMouse(true).Run(); err != nil {
 		panic(err)
+	}
+
+	if !exit {
+		list, err := os.ReadDir(fmt.Sprintf(dir + "\\tmp"))
+		if err != nil {
+			log.Fatal(err, list)
+		}
+
+		// waiting := tview.NewApplication()
+		// go Downloader(waiting, dir)
+		// waiter := tview.NewModal().
+		// 	SetText("Downloading Temp Files: Skipping now may cause issues").
+		// 	AddButtons([]string{"Skip"})
+		// waiter.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+		// 	if buttonLabel == "Skip" {
+		// 		waiting.Stop()
+		// 	}
+		// })
+		// if err := waiting.SetRoot(waiter, false).EnableMouse(true).SetFocus(modal).Run(); err != nil {
+		// 	panic(err)
+		// }
+
+		formatEntrys(dir, list)
 	}
 
 }

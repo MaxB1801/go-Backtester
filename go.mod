@@ -3,7 +3,8 @@ module main.go
 go 1.22.1
 
 require (
-	github.com/gdamore/tcell/v2 v2.7.1
+	github.com/gdamore/tcell v1.4.0
+	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/rivo/tview v0.0.0-20240818110301-fd649dbf1223
 )
 

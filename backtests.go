@@ -37,8 +37,6 @@ type results struct {
 // retur data as struct
 func getData(dir string, stock fs.DirEntry) []dayData {
 
-	dir = fmt.Sprintf(dir + "\\data")
-
 	file := filepath.Join(dir, stock.Name())
 
 	fileOpen, err := os.Open(file)
@@ -277,7 +275,7 @@ func startBacktests(dir string, list []fs.DirEntry, stop_loss bool, rsi_low, rsi
 			return
 		}
 
-		data = getData(dir, stock)
+		data = getData(fmt.Sprintf(dir+"\\data"), stock)
 		stockName := strings.TrimSuffix(stock.Name(), ".csv") // Adjust extension as needed
 
 		// adds rsi and ema to structs

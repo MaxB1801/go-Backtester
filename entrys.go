@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -87,6 +89,22 @@ func GetTickerValues(isEntry bool, dir, ticker string, rawData [][]string) strin
 	return "0"
 }
 
+func addEntryExit(dir, group, ticker, number string, data [][]string) {
+
+	folder := fmt.Sprintf(dir + "\\" + group + "\\tickers.csv")
+	for n, row := range data {
+		if row[0] == ticker {
+			data[n][1] = number
+		}
+	}
+
+	err := writeToCSV(data, folder)
+	if err != nil {
+		fmt.Println("")
+	}
+
+}
+
 // finds entrys and appends to csv. Formats the data essentially
 func formatEntrys(dir string, list []fs.DirEntry) {
 	var number string
@@ -164,68 +182,122 @@ func formatEntrys(dir string, list []fs.DirEntry) {
 	createGUI(dir, acc_list, dis_list, mid_list)
 }
 
+// func test(groups2, ticker2 string, list2 [][]string, app *tview.Application) {
+// 	app.Stop()
+// 	fmt.Println(groups2, ticker2, list2)
+// }
+
+func listItem(list [][]string, app *tview.List) ([]string, float64) {
+	var new []string
+	var count float64
+	count = 0
+	for _, data := range list {
+		new = append(new, data[0])
+		switch data[1] {
+		case "0":
+			app.AddItem(fmt.Sprintf("[white]%s", data[0]), "", 0, nil)
+		case "1":
+			app.AddItem(fmt.Sprintf("[green]%s", data[0]), "", 0, nil)
+		case "2":
+			count += 1
+			app.AddItem(data[0], "", 0, nil).SetMainTextColor(tcell.ColorOrange.TrueColor())
+		}
+	}
+	return new, count
+}
+
 func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 	var acc []string
 	var dis []string
 	var mid []string
-	// var enterAcc string
-	// var enterDis string
-	// var enterMid string
-	// var exitAcc string
-	// var exitMid string
-	// var exitDis string
+	var list [][]string
+	var list2 [][]string
+	var freeFunds float64
+	var accR float64
+	var disR float64
+	var midR float64
+	var accCount float64
+	var disCount float64
+	var midCount float64
+	var floatError error
+	var groups string
+	var groups2 string
+	var ticker string
+	var ticker2 string
+	var stop = false
 
-	// fmt.Println(acc_List, "\n")
-	// fmt.Println(dis_List, "\n")
-	// fmt.Println(mid_List, "\n")
+	accR = 2
+	disR = 1
+	midR = 1
 
 	app := tview.NewApplication()
 
-	accList := tview.NewList()
+	accInv := tview.NewTextView()
+	accInv.SetLabel("Invest £0.00")
+	accList := tview.NewList().SetSelectedBackgroundColor(tcell.ColorBlack)
+	accRatio := tview.NewForm()
+	accRatio.AddInputField("Ratio", "2", 10, nil, func(text string) {
+		if text == "" {
+			text = "0"
+		}
+		text = strings.TrimSpace(text)
+		text = removeNonNumericChars(text)
+		accR, floatError = strconv.ParseFloat(text, 64)
+		if floatError != nil {
+			freeFunds = 0
+		}
 
-	disList := tview.NewList()
-	midList := tview.NewList()
-	accList.SetBorder(true).SetTitle("Core Acc").SetBorderColor(tcell.ColorDarkCyan.TrueColor())
-	disList.SetBorder(true).SetTitle("Core Dis").SetBorderColor(tcell.ColorYellow.TrueColor())
-	midList.SetBorder(true).SetTitle("Mid").SetBorderColor(tcell.ColorLightCoral.TrueColor())
+	})
+	accFlexForms := tview.NewFlex()
+	accFlexForms.SetDirection(tview.FlexRow).AddItem(accRatio, 0, 1, false).AddItem(accInv, 0, 1, false)
+	flexAcc := tview.NewFlex()
+	flexAcc.SetDirection(tview.FlexColumn).AddItem(accList, 0, 1, false).AddItem(accFlexForms, 0, 1, false).SetBorder(true).SetTitle("Core Acc").SetBorderColor(tcell.ColorDarkCyan.TrueColor())
 
-	for _, data := range acc_List {
-		acc = append(acc, data[0])
-		switch data[1] {
-		case "0":
-			accList.AddItem(fmt.Sprintf("[white]%s", data[0]), "", 0, nil)
-		case "1":
-			accList.AddItem(fmt.Sprintf("[green]%s", data[0]), "", 0, nil)
-		case "2":
-			accList.AddItem(data[0], "", 0, nil).SetMainTextColor(tcell.ColorOrange.TrueColor())
+	disInv := tview.NewTextView()
+	disInv.SetLabel("Invest £0.00")
+	disList := tview.NewList().SetSelectedBackgroundColor(tcell.ColorBlack)
+	disRatio := tview.NewForm()
+	disRatio.AddInputField("Ratio", "1.5", 10, nil, func(text string) {
+		if text == "" {
+			text = "0"
 		}
-	}
+		text = strings.TrimSpace(text)
+		text = removeNonNumericChars(text)
+		disR, floatError = strconv.ParseFloat(text, 64)
+		if floatError != nil {
+			freeFunds = 0
+		}
 
-	for _, data := range dis_List {
-		dis = append(dis, data[0])
-		if data[1] == "0" {
-			disList.AddItem(fmt.Sprintf("[white]%s", data[0]), "", 0, nil)
-		}
-		if data[1] == "1" {
-			disList.AddItem(fmt.Sprintf("[green]%s", data[0]), "", 0, nil)
-		}
-		if data[1] == "2" {
-			disList.AddItem(data[0], "", 0, nil).SetMainTextColor(tcell.ColorOrange.TrueColor())
-		}
-	}
+	})
+	disFlexForms := tview.NewFlex()
+	disFlexForms.SetDirection(tview.FlexRow).AddItem(disRatio, 0, 1, false).AddItem(disInv, 0, 1, false)
+	flexDis := tview.NewFlex()
+	flexDis.SetDirection(tview.FlexColumn).AddItem(disList, 0, 1, false).AddItem(disFlexForms, 0, 1, false).SetBorder(true).SetTitle("Core Dis").SetBorderColor(tcell.ColorYellow.TrueColor())
 
-	for _, data := range mid_List {
-		mid = append(mid, data[0])
-		if data[1] == "0" {
-			midList.AddItem(fmt.Sprintf("[white]%s", data[0]), "", 0, nil)
+	midInv := tview.NewTextView()
+	midInv.SetLabel("Invest £0.00")
+	midList := tview.NewList().SetSelectedBackgroundColor(tcell.ColorBlack)
+	midRatio := tview.NewForm()
+	midRatio.AddInputField("Ratio", "1", 10, nil, func(text string) {
+		if text == "" {
+			text = "0"
 		}
-		if data[1] == "1" {
-			midList.AddItem(fmt.Sprintf("[green]%s", data[0]), "", 0, nil)
+		text = strings.TrimSpace(text)
+		text = removeNonNumericChars(text)
+		midR, floatError = strconv.ParseFloat(text, 64)
+		if floatError != nil {
+			freeFunds = 0
 		}
-		if data[1] == "2" {
-			midList.AddItem(data[0], "", 0, nil).SetMainTextColor(tcell.ColorOrange.TrueColor())
-		}
-	}
+
+	})
+	midFlexForms := tview.NewFlex()
+	midFlexForms.SetDirection(tview.FlexRow).AddItem(midRatio, 0, 1, false).AddItem(midInv, 0, 1, false)
+	flexMid := tview.NewFlex()
+	flexMid.SetDirection(tview.FlexColumn).AddItem(midList, 0, 1, false).AddItem(midFlexForms, 0, 1, false).SetBorder(true).SetTitle("Mid").SetBorderColor(tcell.ColorLightCoral.TrueColor())
+
+	acc, accCount = listItem(acc_List, accList)
+	dis, disCount = listItem(dis_List, disList)
+	mid, midCount = listItem(mid_List, midList)
 
 	// entry group
 	entryDropDown := tview.NewForm()
@@ -235,19 +307,49 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 		entryDropDown.Clear(true)
 		switch optionGroup {
 		case "Core Acc":
-			entryDropDown.AddDropDown("Add Entry: ", acc, 0, func(optionAcc string, optionIndex int) {})
+			groups = "acc"
+			entryDropDown.AddDropDown("Add Entry: ", acc, 0, func(option string, optionIndex int) {
+				list = acc_List
+				ticker = option
+			})
 		case "Core Dis":
-			entryDropDown.AddDropDown("Add Entry: ", dis, 0, func(optionAcc string, optionIndex int) {})
+			groups = "dis"
+			entryDropDown.AddDropDown("Add Entry: ", dis, 0, func(option string, optionIndex int) {
+				list = dis_List
+				ticker = option
+			})
 		case "Mid":
-			entryDropDown.AddDropDown("Add Entry: ", mid, 0, func(optionAcc string, optionIndex int) {})
+			groups = "mid"
+			entryDropDown.AddDropDown("Add Entry: ", mid, 0, func(option string, optionIndex int) {
+				list = mid_List
+				ticker = option
+			})
 		}
 	})
-	combDropDown.AddButton("Save", nil)
+	combDropDown.AddButton("Save", func() {
+		addEntryExit(dir, groups, ticker, "1", list)
+		for n, row := range list {
+			if row[0] == ticker {
+				list[n][1] = "1"
+			}
+		}
+		switch groups {
+		case "acc":
+			accList.Clear()
+			acc, accCount = listItem(acc_List, accList)
+		case "dis":
+			disList.Clear()
+			dis, disCount = listItem(dis_List, disList)
+		case "mid":
+			midList.Clear()
+			mid, midCount = listItem(mid_List, midList)
+		}
+
+	})
 
 	flexCombs := tview.NewFlex()
 	flexCombs.SetDirection(tview.FlexColumn).SetBorder(true).SetTitle("Add an Entry")
 	flexCombs.AddItem(combDropDown, 0, 1, true).AddItem(entryDropDown, 0, 1, true)
-	///////////////////////////////////////////
 
 	// entry group
 	entryDropDownExit := tview.NewForm()
@@ -256,66 +358,161 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 		entryDropDownExit.Clear(true)
 		switch optionGroup1 {
 		case "Core Acc":
-			entryDropDownExit.AddDropDown("Add Entry: ", acc, 0, func(optionAcc string, optionIndex int) {})
+			groups2 = "acc"
+			entryDropDownExit.AddDropDown("Add Entry: ", acc, 0, func(option2 string, optionIndex int) {
+				list2 = acc_List
+				ticker2 = option2
+			})
 		case "Core Dis":
-			entryDropDownExit.AddDropDown("Add Entry: ", dis, 0, func(optionAcc string, optionIndex int) {})
+			groups2 = "dis"
+			entryDropDownExit.AddDropDown("Add Entry: ", dis, 0, func(option2 string, optionIndex int) {
+				list2 = dis_List
+				ticker2 = option2
+			})
 		case "Mid":
-			entryDropDownExit.AddDropDown("Add Entry: ", mid, 0, func(optionAcc string, optionIndex int) {})
+			groups2 = "mid"
+			entryDropDownExit.AddDropDown("Add Entry: ", mid, 0, func(option2 string, optionIndex int) {
+				list2 = mid_List
+				ticker2 = option2
+			})
 		}
 	})
-	combDropDownExit.AddButton("Save", nil)
+	combDropDownExit.AddButton("Save", func() {
+		addEntryExit(dir, groups2, ticker2, "0", list2)
+
+		for n, row := range list2 {
+			if row[0] == ticker2 {
+				list[n][1] = "0"
+			}
+		}
+		switch groups2 {
+		case "acc":
+			accList.Clear()
+			acc, accCount = listItem(acc_List, accList)
+		case "dis":
+			disList.Clear()
+			dis, disCount = listItem(dis_List, disList)
+		case "mid":
+			midList.Clear()
+			mid, midCount = listItem(mid_List, midList)
+		}
+	})
+
+	firstForm := tview.NewForm()
+	firstForm.AddInputField("Free Funds £", "0", 10, nil, func(text string) {
+		if text == "" {
+			text = "0"
+		}
+		text = strings.TrimSpace(text)
+		text = removeNonNumericChars(text)
+		freeFunds, floatError = strconv.ParseFloat(text, 64)
+		if floatError != nil {
+			freeFunds = 0
+		}
+
+		findInvestAmountsPerStock(freeFunds, accCount, disCount, midCount, accR, disR, midR, accInv, disInv, midInv)
+	})
+
+	firstForm.AddButton("Exit", func() {
+
+		app.Stop()
+	})
+	firstForm.AddButton("Reconfigure", func() {
+		stop = true
+
+		app.Stop()
+	})
+
+	formFlex := tview.NewFlex()
+	formFlex.SetBorder(true)
+	formFlex.AddItem(tview.NewBox(), 0, 1, false).AddItem(firstForm, 0, 3, false).AddItem(tview.NewBox(), 0, 1, false)
 
 	flexCombsExit := tview.NewFlex()
 	flexCombsExit.SetDirection(tview.FlexColumn).SetBorder(true).SetTitle("Remove an Entry")
 	flexCombsExit.AddItem(combDropDownExit, 0, 1, true).AddItem(entryDropDownExit, 0, 1, true)
-	///////////////////
-	buttonExit := tview.NewButton("Exit").SetSelectedFunc(func() {
-		app.Stop()
-	})
-	buttonExit.SetBorder(true)
-	flexButtonTop := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(tview.NewBox(), 0, 2, false).
-		AddItem(tview.NewBox(), 0, 2, false).
-		AddItem(tview.NewBox(), 0, 2, false)
-	flexButtonMiddle := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(tview.NewBox(), 0, 1, false).
-		AddItem(buttonExit, 0, 2, false).
-		AddItem(tview.NewBox(), 0, 1, false)
-	flexButtonBottom := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(tview.NewBox(), 0, 2, false).
-		AddItem(tview.NewBox(), 0, 2, false).
-		AddItem(tview.NewBox(), 0, 2, false)
-	flextButton := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(flexButtonTop, 0, 1, false).
-		AddItem(flexButtonMiddle, 0, 2, false).
-		AddItem(flexButtonBottom, 0, 1, false)
 
-	////////////
-	buttonConfigure := tview.NewButton("Reconfigure").SetSelectedFunc(func() {
-		app.Stop()
-	})
-	buttonConfigure.SetBorder(true)
+	flexTopRow := tview.NewFlex().SetDirection(tview.FlexColumn).AddItem(formFlex, 0, 1, false).AddItem(flexCombs, 0, 2, false).AddItem(flexCombsExit, 0, 2, false)
 
-	flexButtonMiddleC := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(tview.NewBox(), 0, 1, false).
-		AddItem(buttonConfigure, 0, 2, false).
-		AddItem(tview.NewBox(), 0, 1, false)
-
-	flextButtonC := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(flexButtonTop, 0, 1, false).
-		AddItem(flexButtonMiddleC, 0, 2, false).
-		AddItem(flexButtonBottom, 0, 1, false)
-
-	///////
-
-	flexTopRow := tview.NewFlex().SetDirection(tview.FlexColumn).AddItem(flextButton, 0, 1, false).AddItem(flextButtonC, 0, 1, false).AddItem(flexCombs, 0, 3, false).AddItem(flexCombsExit, 0, 3, false)
-
-	flexLists := tview.NewFlex().SetDirection(tview.FlexColumn).AddItem(accList, 0, 2, false).AddItem(disList, 0, 2, false).AddItem(midList, 0, 2, false)
+	flexLists := tview.NewFlex().SetDirection(tview.FlexColumn).AddItem(flexAcc, 0, 2, false).AddItem(flexDis, 0, 2, false).AddItem(flexMid, 0, 2, false)
 
 	FinalFlex := tview.NewFlex().SetDirection(tview.FlexRow).AddItem(flexTopRow, 0, 1, false).AddItem(flexLists, 0, 4, false)
+
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+
+		switch event.Key() {
+		case tcell.KeyEnter:
+			findInvestAmountsPerStock(freeFunds, accCount, disCount, midCount, accR, disR, midR, accInv, disInv, midInv)
+		default:
+			findInvestAmountsPerStock(freeFunds, accCount, disCount, midCount, accR, disR, midR, accInv, disInv, midInv)
+			enterEvent := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+			// Post this event to the application's event queue
+			app.QueueEvent(enterEvent)
+
+		}
+		return event
+	})
 
 	if err := app.SetRoot(FinalFlex, true).EnableMouse(true).Run(); err != nil {
 		panic(err)
 	}
 
+	if stop {
+		fmt.Println(freeFunds)
+		waiting := tview.NewApplication()
+		go Downloader(waiting, dir)
+		waiter := tview.NewModal().
+			SetText("Downloading Temp Files: Skipping now may cause issues").
+			AddButtons([]string{"Skip"})
+		waiter.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "Skip" {
+				waiting.Stop()
+			}
+		})
+		if err := waiting.SetRoot(waiter, false).EnableMouse(true).Run(); err != nil {
+			panic(err)
+		}
+
+		list, err := os.ReadDir(fmt.Sprintf(dir + "\\tmp"))
+		if err != nil {
+			log.Fatal(err, list)
+		}
+
+		formatEntrys(dir, list)
+	}
+
+}
+
+func findInvestAmountsPerStock(funds, accCount, disCount, midCount, accR, disR, midR float64, accText, disText, midText *tview.TextView) { // (float64, float64, float64, float64) { //, freeFundChan, accRChan, disRChan, midRChan chan float64, boolChan chan bool, app *tview.Application) {
+
+	x := funds / ((accR * accCount) + (disR * disCount) + (midR * midCount))
+
+	invAcc := accR * x
+	invDis := disR * x
+	invMid := midR * x
+
+	if accCount == 0 {
+		invAcc = 0
+	}
+	if disCount == 0 {
+		invDis = 0
+	}
+	if midCount == 0 {
+		invMid = 0
+	}
+
+	accText.Clear()
+	disText.Clear()
+	midText.Clear()
+	accText.SetLabel(fmt.Sprintf("Invest £%.2f", invAcc))
+	disText.SetLabel(fmt.Sprintf("Invest £%.2f", invDis))
+	midText.SetLabel(fmt.Sprintf("Invest £%.2f", invMid))
+
+}
+
+func removeNonNumericChars(input string) string {
+	// Compile a regular expression to match non-numeric characters
+	re := regexp.MustCompile(`\D`)
+
+	// Replace all non-numeric characters with an empty string
+	return re.ReplaceAllString(input, "")
 }

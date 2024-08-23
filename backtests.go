@@ -152,7 +152,7 @@ func resultsFile(dir string, trades []results) {
 func addMaths(data []dayData) {
 
 	//calculating ema
-	for n, _ := range data {
+	for n := range data {
 		if n < 19 {
 			continue
 		}

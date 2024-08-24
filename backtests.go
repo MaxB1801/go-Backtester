@@ -176,7 +176,7 @@ func findEntry(n int, data []dayData, rsi int, stop_loss bool) (int, trades, flo
 		if n > len(data)-1 {
 			return n, trades{}, 0
 		}
-		if data[n].rsi < float64(rsi) && data[n].close < data[n].ema {
+		if data[n].rsi < float64(rsi) && data[n].close < data[n].ema { // probably dont need the close < ema part, if we are just looking for rsi
 			ranges = n
 			break
 		}

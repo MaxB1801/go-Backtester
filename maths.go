@@ -1,12 +1,8 @@
 package main
 
-import (
-	"math"
-)
-
-func round2dp(value float64) float64 {
-	return math.Round(value*100) / 100
-}
+// func round2dp(value float64) float64 {
+// 	return math.Round(value*100) / 100
+// }
 
 func get20(n int, data []dayData) [20]dayData {
 	var days [20]dayData
@@ -23,7 +19,7 @@ func getEMA(data [20]dayData) float64 {
 		total += data[n].close
 	}
 
-	return round2dp(total / 20)
+	return total / 20
 }
 
 // rma calculates the Relative Moving Average for a slice of floats
@@ -66,7 +62,7 @@ func calculateRSI(data []dayData, length int) {
 	// Calculate RSI
 	for i := length; i < len(data); i++ {
 		rs := avgGain[i-1] / avgLoss[i-1]
-		data[i].rsi = round2dp(100 - (100 / (1 + rs)))
+		data[i].rsi = 100 - (100 / (1 + rs))
 	}
 }
 

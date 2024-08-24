@@ -300,6 +300,10 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 	mid, midCount = listItem(mid_List, midList)
 
 	// entry group
+	percentWin := tview.NewTextView()
+	percentWin.SetLabel("0% Avg Return")
+	winRates := tview.NewTextView()
+	winRates.SetLabel("0% Win Rate")
 	entryDropDown := tview.NewForm()
 	group := []string{"Core Acc", "Core Dis", "Mid"}
 	combDropDown := tview.NewForm()
@@ -311,18 +315,21 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 			entryDropDown.AddDropDown("Add Entry: ", acc, 0, func(option string, optionIndex int) {
 				list = acc_List
 				ticker = option
+				winRate(dir, groups, ticker, percentWin, winRates)
 			})
 		case "Core Dis":
 			groups = "dis"
 			entryDropDown.AddDropDown("Add Entry: ", dis, 0, func(option string, optionIndex int) {
 				list = dis_List
 				ticker = option
+				winRate(dir, groups, ticker, percentWin, winRates)
 			})
 		case "Mid":
 			groups = "mid"
 			entryDropDown.AddDropDown("Add Entry: ", mid, 0, func(option string, optionIndex int) {
 				list = mid_List
 				ticker = option
+				winRate(dir, groups, ticker, percentWin, winRates)
 			})
 		}
 	})
@@ -348,8 +355,9 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 	})
 
 	flexCombs := tview.NewFlex()
-	flexCombs.SetDirection(tview.FlexColumn).SetBorder(true).SetTitle("Add an Entry")
-	flexCombs.AddItem(combDropDown, 0, 1, true).AddItem(entryDropDown, 0, 1, true)
+	flexCombs.SetBorder(true).SetTitle("Add an Entry")
+	flexCombs.SetDirection(tview.FlexColumn).AddItem(combDropDown, 0, 1, true).AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(entryDropDown, 0, 2, true).AddItem(percentWin, 0, 1, false).AddItem(winRates, 0, 1, false), 0, 1, false)
 
 	// entry group
 	entryDropDownExit := tview.NewForm()
@@ -457,7 +465,7 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 	}
 
 	if stop {
-		fmt.Println(freeFunds)
+
 		waiting := tview.NewApplication()
 		go Downloader(waiting, dir)
 		waiter := tview.NewModal().
@@ -479,6 +487,46 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 
 		formatEntrys(dir, list)
 	}
+
+}
+
+func winRate(dir, group, ticker string, app *tview.TextView, app2 *tview.TextView) {
+
+	fileOpen, err := os.Open(fmt.Sprintf(dir + "\\" + group + "\\trades\\" + ticker + ".csv"))
+	if err != nil {
+		app.SetLabel("1% Win Rate")
+	}
+
+	defer fileOpen.Close()
+
+	// Create a new CSV reader
+	reader := csv.NewReader(fileOpen)
+
+	// Read all rows from the CSV
+	rawData, err := reader.ReadAll()
+	if err != nil {
+		app.SetLabel("2% Win Rate")
+	}
+
+	var total float64 = 0
+	var tmp float64 = 0
+	var count float64
+
+	for _, row := range rawData {
+		tmp, err = strconv.ParseFloat(row[5], 64)
+		if err != nil {
+			app.SetLabel("3% Win Rate")
+		}
+		if tmp >= 0 {
+			count += 1
+		}
+		total += tmp
+	}
+	// app2.SetLabel(fmt.Sprintf("%.2f -- %.2f", count, (float64)(len(rawData))))
+
+	app2.SetLabel(fmt.Sprintf("%.2f%% Win Rate", 100*(count/(float64)(len(rawData)))))
+
+	app.SetLabel(fmt.Sprintf("%.2f%% Avg Return", total/(float64)(len(rawData)-1)))
 
 }
 

@@ -213,39 +213,47 @@ func findEntry(n int, data []dayData, rsi int, stop_loss bool) (int, trades, flo
 func findExit(n int, data []dayData, rsi int, trade trades, low float64) (int, trades) {
 	length := n
 	// iterates n until exits can be looked for
-	for {
-		if n > len(data)-1 {
-			return n, trades{}
-		}
-
-		if data[n].close < low {
-			trade.Exit_Date = data[n].date
-			trade.Exit_Price = data[n].close
-			trade.Trade_Length = n - length                                              // Calculate the length of the trade
-			trade.ROI = (trade.Exit_Price - trade.Entry_Price) / trade.Entry_Price * 100 // Calculate ROI
-			return n, trade
-		}
-
-		if data[n].rsi > float64(rsi) {
-			break
-		}
-		n += 1
-
-	}
 
 	for {
-		if n > len(data)-1 {
-			return n, trades{}
-		}
-		if data[n].close < data[n].ema {
-			trade.Exit_Date = data[n].date
-			trade.Exit_Price = data[n].close
-			trade.Trade_Length = n - length                                              // Calculate the length of the trade
-			trade.ROI = (trade.Exit_Price - trade.Entry_Price) / trade.Entry_Price * 100 // Calculate ROI
-			return n, trade
+		for {
+			if n > len(data)-1 {
+				return n, trades{}
+			}
+
+			if data[n].close < low {
+				trade.Exit_Date = data[n].date
+				trade.Exit_Price = data[n].close
+				trade.Trade_Length = n - length                                              // Calculate the length of the trade
+				trade.ROI = (trade.Exit_Price - trade.Entry_Price) / trade.Entry_Price * 100 // Calculate ROI
+				return n, trade
+			}
+
+			if data[n].rsi > float64(rsi) {
+				break
+			}
+			n += 1
 
 		}
-		n += 1
+
+		for {
+			if n > len(data)-1 {
+				return n, trades{}
+			}
+			if data[n].close < data[n].ema {
+				trade.Exit_Date = data[n].date
+				trade.Exit_Price = data[n].close
+				if low == 0 {
+					if trade.Exit_Price < trade.Entry_Price {
+						n += 1
+						break
+					}
+				}
+				trade.Trade_Length = n - length                                              // Calculate the length of the trade
+				trade.ROI = (trade.Exit_Price - trade.Entry_Price) / trade.Entry_Price * 100 // Calculate ROI
+				return n, trade
+			}
+			n += 1
+		}
 	}
 
 }

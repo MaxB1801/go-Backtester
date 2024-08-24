@@ -30,12 +30,12 @@ func main() {
 	var download = false
 	var err error
 	var stop_loss bool
-	var rsi_low int
-	var rsi_high int
-	var rsi_exit_low int
-	var rsi_exit_high int
+	var rsi_low int = 20
+	var rsi_high int = 40
+	var rsi_exit_low int = 60
+	var rsi_exit_high int = 80
 	var folder string
-	var rsi_increment int
+	var rsi_increment int = 5
 	var buttonText string
 
 	// creating loading screen while downloading apps, can press button to skip!!!
@@ -133,7 +133,7 @@ func main() {
 	errors := tview.NewList()
 	flexMess := tview.NewFlex().
 		AddItem(tview.NewBox(), 0, 1, false).
-		AddItem(message, 0, 2, false).
+		AddItem(message, 0, 4, false).
 		AddItem(tview.NewBox(), 0, 1, false)
 	flexMess.SetBorder(true).SetTitle("Results").SetBorderColor(tcell.ColorDarkCyan.TrueColor())
 	flexErrors := tview.NewFlex().
@@ -169,7 +169,7 @@ func main() {
 	// increments
 	increments := []string{"  1  ", "  2  ", "  3  ", "  4  ", "  5  "}
 	increment := tview.NewForm()
-	increment.AddDropDown("Increase RSI in Increments of:", increments, 0, func(option1 string, optionIndex int) {
+	increment.AddDropDown("Increase RSI in Increments of:", increments, 4, func(option1 string, optionIndex int) {
 		// Trim spaces
 		option1 = strings.TrimSpace(option1)
 
@@ -181,7 +181,7 @@ func main() {
 	// increments
 	stops := []string{"Yes", "No"}
 	stop := tview.NewForm()
-	stop.AddDropDown("Include Stop Loss:", stops, 0, func(option2 string, optionIndex int) {
+	stop.AddDropDown("Include Stop Loss:", stops, 1, func(option2 string, optionIndex int) {
 		switch option2 {
 		case "Yes":
 			stop_loss = true
@@ -201,34 +201,38 @@ func main() {
 
 	// rsi forms
 	low := tview.NewForm()
-	low.AddInputField("Entry RSI Minumum", "", 20, nil, func(text string) {
+	low.AddInputField("Entry RSI Minumum", "25", 20, nil, func(text string) {
 		rsi_low, err = strconv.Atoi(text)
 		if err != nil {
 			rsi_low = -1
+
 		}
 
 	})
 	high := tview.NewForm()
-	high.AddInputField("Entry RSI Maximum", "", 20, nil, func(text string) {
+	high.AddInputField("Entry RSI Maximum", "40", 20, nil, func(text string) {
 		rsi_high, err = strconv.Atoi(text)
 		if err != nil {
-			rsi_low = -1
+			rsi_high = -1
+
 		}
 
 	})
 	low_enter := tview.NewForm()
-	low_enter.AddInputField("Exit RSI Minimum", "", 20, nil, func(text string) {
+	low_enter.AddInputField("Exit RSI Minimum", "60", 20, nil, func(text string) {
 		rsi_exit_low, err = strconv.Atoi(text)
 		if err != nil {
-			rsi_low = -1
+			rsi_exit_low = -1
+
 		}
 
 	})
 	high_enter := tview.NewForm()
-	high_enter.AddInputField("Exit RSI Maximum", "", 20, nil, func(text string) {
+	high_enter.AddInputField("Exit RSI Maximum", "80", 20, nil, func(text string) {
 		rsi_exit_high, err = strconv.Atoi(text)
 		if err != nil {
-			rsi_low = -1
+			rsi_exit_high = -1
+
 		}
 
 	})
@@ -268,7 +272,7 @@ func main() {
 	buttonExit.SetLabelColor(tcell.ColorBlack.TrueColor())
 	buttonExit.SetLabelColorActivated(tcell.ColorBlack.TrueColor())
 
-	buttonList := tview.NewButton("View Upcoming Entrys")
+	buttonList := tview.NewButton("View Upcoming Entries")
 	buttonList.SetSelectedFunc(func() {
 		exit = false
 		// Set the environment variable
@@ -293,11 +297,11 @@ func main() {
 		AddItem(tview.NewBox(), 0, 2, false)
 	flexButtonMiddle := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(tview.NewBox(), 0, 1, false).
-		AddItem(buttonSort, 0, 1, false).
+		AddItem(buttonSort, 0, 2, false).
 		AddItem(tview.NewBox(), 0, 1, false).
-		AddItem(buttonList, 0, 1, false).
+		AddItem(buttonList, 0, 2, false).
 		AddItem(tview.NewBox(), 0, 1, false).
-		AddItem(buttonExit, 0, 1, false).
+		AddItem(buttonExit, 0, 2, false).
 		AddItem(tview.NewBox(), 0, 1, false)
 	flexButtonBottom := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(tview.NewBox(), 0, 2, false).
@@ -324,20 +328,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err, list)
 		}
-
-		// waiting := tview.NewApplication()
-		// go Downloader(waiting, dir)
-		// waiter := tview.NewModal().
-		// 	SetText("Downloading Temp Files: Skipping now may cause issues").
-		// 	AddButtons([]string{"Skip"})
-		// waiter.SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-		// 	if buttonLabel == "Skip" {
-		// 		waiting.Stop()
-		// 	}
-		// })
-		// if err := waiting.SetRoot(waiter, false).EnableMouse(true).SetFocus(modal).Run(); err != nil {
-		// 	panic(err)
-		// }
 
 		formatEntrys(dir, list)
 	}

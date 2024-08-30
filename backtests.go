@@ -289,6 +289,49 @@ func startBacktests(dir string, list []fs.DirEntry, stop_loss bool, rsi_low, rsi
 		// adds rsi and ema to structs
 		addMaths(data)
 
+		// code for testing
+		/////////////////////////////////////////////////////
+
+		// if stockName == "AAPL" {
+		// 	/////////////////////////////////////////////////////////
+		// 	dir2, errs := os.Getwd()
+		// 	if errs != nil {
+		// 		fmt.Println("")
+		// 	}
+
+		// 	file, err := os.Create(fmt.Sprintf(dir2 + "\\apls.csv"))
+		// 	if err != nil {
+		// 		errorChannel <- fmt.Sprintf("ERROR Writing to CSV: %s", err)
+		// 	}
+		// 	defer file.Close()
+
+		// 	writer := csv.NewWriter(file)
+		// 	defer writer.Flush()
+
+		// 	// Write the header
+		// 	header := []string{"Entry Date", "low", "close", "rsi", "ema"}
+		// 	if err := writer.Write(header); err != nil {
+		// 		errorChannel <- fmt.Sprintf("error writing header to CSV: %s", err)
+		// 	}
+
+		// 	// Write the data rows
+		// 	for _, trade := range data {
+		// 		record := []string{
+		// 			trade.date,
+		// 			strconv.FormatFloat(trade.low, 'f', 2, 64),
+		// 			strconv.FormatFloat(trade.close, 'f', 2, 64),
+		// 			strconv.FormatFloat(trade.rsi, 'f', 2, 64),
+		// 			strconv.FormatFloat(trade.ema, 'f', 2, 64),
+		// 		}
+		// 		if err := writer.Write(record); err != nil {
+		// 			fmt.Errorf("error writing record to CSV: %v", err)
+		// 		}
+		// 	}
+
+		// 	///////////////////////////////////////////////////////
+
+		// }
+
 		test, rsi, rsi_exit, totalROI = backtest(data, stop_loss, rsi_low, rsi_high, rsi_exit_low, rsi_exit_high, rsi_increment)
 
 		// doing output logic

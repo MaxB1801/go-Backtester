@@ -34,3 +34,12 @@ GRAPHSSS
 pyinstaller --onefile python.py
 
 go build -o finance.exe
+
+
+
+
+
+
+
+
+

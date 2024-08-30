@@ -133,7 +133,7 @@ func main() {
 	errors := tview.NewList()
 	flexMess := tview.NewFlex().
 		AddItem(tview.NewBox(), 0, 1, false).
-		AddItem(message, 0, 4, false).
+		AddItem(message, 0, 2, false).
 		AddItem(tview.NewBox(), 0, 1, false)
 	flexMess.SetBorder(true).SetTitle("Results").SetBorderColor(tcell.ColorDarkCyan.TrueColor())
 	flexErrors := tview.NewFlex().

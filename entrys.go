@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	RSI_VALUE int = 35
+	RSI_VALUE      int = 35
+	RSI_VALUE_EXIT int = 65
 )
 
 func writeToCSV(data [][]string, folder string) error {
@@ -61,13 +62,40 @@ func isItEntry(data []dayData) bool {
 	return enter
 }
 
+func isItExit(data []dayData, group string) bool {
+	n := len(data) - 1
+	exit := false
+
+	if data[n].close < data[n].ema && group != "acc" {
+		exit = true
+		return exit
+	} else {
+		for data[n].close > data[n].ema {
+			if data[n].rsi > float64(RSI_VALUE_EXIT) {
+				exit = true
+				return exit
+			}
+			n -= 1
+		}
+	}
+
+	return exit
+
+}
+
 // return number for list
-func GetTickerValues(isEntry bool, dir, ticker string, rawData [][]string) string {
+func GetTickerValues(isEntry, isExit bool, dir, ticker string, rawData [][]string) string {
 
 	for _, row := range rawData {
 
 		if row[0] == ticker {
 			switch row[1] {
+			case "3":
+				if isExit {
+					return "3"
+				} else {
+					return "1"
+				}
 			case "2":
 				if isEntry {
 					return "2"
@@ -75,7 +103,11 @@ func GetTickerValues(isEntry bool, dir, ticker string, rawData [][]string) strin
 					return "0"
 				}
 			case "1":
-				return "1"
+				if isExit {
+					return "3"
+				} else {
+					return "1"
+				}
 			case "0":
 				if isEntry {
 					return "2"
@@ -114,6 +146,7 @@ func formatEntrys(dir string, list []fs.DirEntry) {
 	var acc_list [][]string
 	var dis_list [][]string
 	var mid_list [][]string
+	var isExit bool
 
 	var tmpData [][]string
 
@@ -122,26 +155,46 @@ func formatEntrys(dir string, list []fs.DirEntry) {
 		if err != nil {
 			log.Fatal(err, list)
 		}
+
+		newDir = fmt.Sprintf(dir + "\\" + folder.Name() + "\\tickers.csv")
+
+		fileOpen, err := os.Open(newDir)
+		if err != nil {
+
+			errorChannel <- fmt.Sprintf("ERROR OPENING FILE: %s", err)
+		}
+
+		defer fileOpen.Close()
+
+		// Create a new CSV reader
+		reader := csv.NewReader(fileOpen)
+
+		// Read all rows from the CSV
+		rawData, err := reader.ReadAll()
+		if err != nil {
+			errorChannel <- fmt.Sprintf("ERROR READING CSV: %s", err)
+		}
+
 		for _, ticker := range tickers {
 
-			newDir = fmt.Sprintf(dir + "\\" + folder.Name() + "\\tickers.csv")
+			// newDir = fmt.Sprintf(dir + "\\" + folder.Name() + "\\tickers.csv")
 
-			fileOpen, err := os.Open(newDir)
-			if err != nil {
+			// fileOpen, err := os.Open(newDir)
+			// if err != nil {
 
-				errorChannel <- fmt.Sprintf("ERROR OPENING FILE: %s", err)
-			}
+			// 	errorChannel <- fmt.Sprintf("ERROR OPENING FILE: %s", err)
+			// }
 
-			defer fileOpen.Close()
+			// defer fileOpen.Close()
 
-			// Create a new CSV reader
-			reader := csv.NewReader(fileOpen)
+			// // Create a new CSV reader
+			// reader := csv.NewReader(fileOpen)
 
-			// Read all rows from the CSV
-			rawData, err := reader.ReadAll()
-			if err != nil {
-				errorChannel <- fmt.Sprintf("ERROR READING CSV: %s", err)
-			}
+			// // Read all rows from the CSV
+			// rawData, err := reader.ReadAll()
+			// if err != nil {
+			// 	errorChannel <- fmt.Sprintf("ERROR READING CSV: %s", err)
+			// }
 
 			data = getData(fmt.Sprintf(dir+"\\tmp"+"\\"+folder.Name()), ticker)
 
@@ -149,7 +202,9 @@ func formatEntrys(dir string, list []fs.DirEntry) {
 
 			isEntry = isItEntry(data)
 
-			number = GetTickerValues(isEntry, dir, strings.TrimSuffix(ticker.Name(), ".csv"), rawData)
+			isExit = isItExit(data, folder.Name())
+
+			number = GetTickerValues(isEntry, isExit, dir, strings.TrimSuffix(ticker.Name(), ".csv"), rawData)
 
 			tmpData = append(tmpData, []string{
 				strings.TrimSuffix(ticker.Name(), ".csv"),
@@ -201,6 +256,8 @@ func listItem(list [][]string, app *tview.List) ([]string, float64) {
 		case "2":
 			count += 1
 			app.AddItem(data[0], "", 0, nil).SetMainTextColor(tcell.ColorOrange.TrueColor())
+		case "3":
+			app.AddItem(fmt.Sprintf("[green]*%s*", data[0]), "", 0, nil)
 		}
 	}
 	return new, count
@@ -558,8 +615,14 @@ func findInvestAmountsPerStock(funds, accCount, disCount, midCount, accR, disR, 
 }
 
 func removeNonNumericChars(input string) string {
+
+	// if multiple "." return 0
+	if strings.Count(input, ".") > 1 {
+		return "0"
+	}
+
 	// Compile a regular expression to match non-numeric characters
-	re := regexp.MustCompile(`\D`)
+	re := regexp.MustCompile(`[^\d.]`)
 
 	// Replace all non-numeric characters with an empty string
 	return re.ReplaceAllString(input, "")

@@ -33,7 +33,12 @@ GRAPHSSS
 
 pyinstaller --onefile python.py
 
+go build -o tradeHelper.exe
+
+rsrc -ico design.ico -o appicon.syso
 go build -o finance.exe
+
+
 
 
 

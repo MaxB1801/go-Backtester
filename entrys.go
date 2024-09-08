@@ -258,7 +258,7 @@ func listItem(list [][]string, app *tview.List) ([]string, float64) {
 			app.AddItem(fmt.Sprintf("[green]%s", data[0]), "", 0, nil)
 		case "2":
 			count += 1
-			app.AddItem(data[0], "", 0, nil).SetMainTextColor(tcell.ColorOrange.TrueColor())
+			app.AddItem(fmt.Sprintf("[#FFA500]%s", data[0]), "", 0, nil) // .SetMainTextColor(tcell.ColorOrange.TrueColor())
 		case "3":
 			app.AddItem(fmt.Sprintf("[green]*%s*", data[0]), "", 0, nil)
 		}
@@ -333,7 +333,7 @@ func createGUI(dir string, acc_List, dis_List, mid_List [][]string) {
 		disFlexForms := tview.NewFlex()
 		disFlexForms.SetDirection(tview.FlexRow).AddItem(disRatio, 0, 1, false).AddItem(disInv, 0, 1, false)
 		flexDis := tview.NewFlex()
-		flexDis.SetDirection(tview.FlexColumn).AddItem(disList, 0, 1, false).AddItem(disFlexForms, 0, 1, false).SetBorder(true).SetTitle("Core Dis").SetBorderColor(tcell.ColorYellow.TrueColor())
+		flexDis.SetDirection(tview.FlexColumn).AddItem(disList, 0, 1, false).AddItem(disFlexForms, 0, 1, true).SetBorder(true).SetTitle("Core Dis").SetBorderColor(tcell.ColorYellow.TrueColor())
 
 		midInv := tview.NewTextView()
 		midInv.SetLabel("Invest £0.00")

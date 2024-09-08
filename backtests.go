@@ -12,6 +12,8 @@ import (
 
 type dayData struct {
 	date  string
+	open  float64
+	high  float64
 	low   float64
 	close float64
 	rsi   float64
@@ -35,9 +37,9 @@ type results struct {
 }
 
 // retur data as struct
-func getData(dir string, stock fs.DirEntry) []dayData {
+func getData(dir, stock string, inc bool) []dayData {
 
-	file := filepath.Join(dir, stock.Name())
+	file := filepath.Join(dir, stock)
 
 	fileOpen, err := os.Open(file)
 	if err != nil {
@@ -60,6 +62,8 @@ func getData(dir string, stock fs.DirEntry) []dayData {
 	var day dayData
 	var lowV float64
 	var closeV float64
+	var openV float64
+	var highV float64
 	var err1 error
 	for _, row := range rawData {
 		lowV, err1 = strconv.ParseFloat(row[3], 64)
@@ -72,10 +76,33 @@ func getData(dir string, stock fs.DirEntry) []dayData {
 			fmt.Printf("Error converting string to float64: %v\n", err1)
 		}
 
-		day = dayData{
-			date:  row[0],
-			low:   lowV,
-			close: closeV,
+		if inc {
+			openV, err1 = strconv.ParseFloat(row[1], 64)
+			if err1 != nil && row[0] == "a" {
+				fmt.Printf("Error converting string to float64: %v\n", err1)
+			}
+
+			highV, err1 = strconv.ParseFloat(row[2], 64)
+			if err1 != nil && row[0] == "a" {
+				fmt.Printf("Error converting string to float64: %v\n", err1)
+			}
+		}
+
+		if !inc {
+			day = dayData{
+				date:  row[0],
+				low:   lowV,
+				close: closeV,
+			}
+		} else {
+			day = dayData{
+				date:  row[0],
+				open:  openV,
+				high:  highV,
+				low:   lowV,
+				close: closeV,
+			}
+
 		}
 		data = append(data, day)
 	}
@@ -283,7 +310,7 @@ func startBacktests(dir string, list []fs.DirEntry, stop_loss bool, rsi_low, rsi
 			return
 		}
 
-		data = getData(fmt.Sprintf(dir+"\\data"), stock)
+		data = getData(fmt.Sprintf(dir+"\\data"), stock.Name(), false)
 		stockName := strings.TrimSuffix(stock.Name(), ".csv") // Adjust extension as needed
 
 		// adds rsi and ema to structs

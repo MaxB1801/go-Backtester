@@ -6,6 +6,7 @@ package main
 
 func get20(n int, data []dayData) [20]dayData {
 	var days [20]dayData
+
 	for i := 0; i < 20; i++ {
 		//fmt.Println(i)
 		days[19-i] = data[n-i]

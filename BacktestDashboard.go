@@ -62,7 +62,7 @@ func backtestDashboard() {
 
 			}
 			if buttonLabel == "Skip" {
-				download = true
+
 				download = false
 				downloadX = false
 				app1.Stop()

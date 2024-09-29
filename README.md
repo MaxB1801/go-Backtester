@@ -40,7 +40,8 @@ go build -o finance.exe
 
 
 
-
+# Known bugs
+The channles get messed up if enter backtest then exit
 
 
 

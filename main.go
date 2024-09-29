@@ -19,7 +19,7 @@ var channel chan string = make(chan string)
 var errorChannel chan string = make(chan string)
 
 func main() {
-	// creating loading screen while downloading apps, can press button to skip!!!
+
 	for {
 		dir, err := os.Getwd()
 		if err != nil {

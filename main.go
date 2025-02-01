@@ -41,7 +41,7 @@ func main() {
 			}
 			if buttonLabel == "Trade Tracker" {
 				// Set the environment variable
-				err = os.Setenv("PERIOD", "1")
+				err = os.Setenv("PERIOD", "2")
 				if err != nil {
 					log.Fatalf("Failed to set env var: %v", err)
 				}
